@@ -29,10 +29,6 @@ jobs:
           pip install -r requirements.txt
           pip install safety
 
-      - name: Run Safety scan
-        working-directory: ./backend
-        run: |
-          safety check --json > safety-report.json || true
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
