@@ -11,13 +11,13 @@ export const Contact = () => {
                     {/* Contact Info */}
                     <div className="animate-slide-in">
                         <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-6">
-                            Let's talk about <br />
+                            Let&apos;s talk about <br />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
                                 your next project
                             </span>
                         </h1>
                         <p className="text-xl text-gray-600 dark:text-gray-300 mb-12">
-                            Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.
+                            Have questions? We&apos;d love to hear from you. Send us a message and we&apos;ll respond as soon as possible.
                         </p>
 
                         <div className="space-y-8">

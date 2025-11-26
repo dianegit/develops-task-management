@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, Shield, Zap, Layout, Lock, BarChart3, Users } from 'lucide-react';
+import { ArrowRight, Shield, Zap, Layout, Lock, BarChart3, Users } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 
 export const Landing = () => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Navbar } from '../components/Navbar';
 import { TaskCard } from '../components/TaskCard';
 import { TaskForm } from '../components/TaskForm';
@@ -20,9 +20,9 @@ export const Dashboard = () => {
 
     useEffect(() => {
         loadTasks();
-    }, [filters]);
+    }, [loadTasks]);
 
-    const loadTasks = async () => {
+    const loadTasks = useCallback(async () => {
         try {
             const data = await taskService.getTasks(filters);
             setTasks(data.tasks || []);
@@ -31,7 +31,7 @@ export const Dashboard = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [filters]);
 
     const handleCreateTask = () => {
         setEditingTask(null);
