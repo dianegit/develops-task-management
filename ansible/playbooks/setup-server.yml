@@ -1,0 +1,44 @@
+---
+- name: Configure Task Manager Application Server
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  vars:
+    acr_name: "{{ lookup('env', 'ACR_NAME') }}"
+    acr_login_server: "{{ lookup('env', 'ACR_LOGIN_SERVER') }}"
+    backend_image_name: "taskmanager-backend"
+    frontend_image_name: "taskmanager-frontend"
+    image_tag: "{{ lookup('env', 'IMAGE_TAG') | default('latest', true) }}"
+    db_user: "{{ lookup('env', 'DB_USER') | default('taskuser', true) }}"
+    db_password: "{{ lookup('env', 'DB_PASSWORD') }}"
+    db_name: "{{ lookup('env', 'DB_NAME') | default('taskmanager', true) }}"
+    secret_key: "{{ lookup('env', 'SECRET_KEY') }}"
+
+  tasks:
+    - name: Display target host information
+      debug:
+        msg: "Configuring {{ inventory_hostname }} ({{ ansible_host }})"
+
+  roles:
+    - security
+    - docker
+    - app-deploy
+
+  post_tasks:
+    - name: Verify application is running
+      uri:
+        url: "http://localhost:8000/health"
+        status_code: 200
+      register: health_check
+      until: health_check.status == 200
+      retries: 5
+      delay: 3
+
+    - name: Display deployment summary
+      debug:
+        msg:
+          - "Deployment completed successfully"
+          - "Application URL: http://{{ ansible_host }}"
+          - "Backend Health: http://{{ ansible_host }}:8000/health"
+          - "Frontend: http://{{ ansible_host }}:3000"

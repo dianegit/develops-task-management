@@ -1,0 +1,40 @@
+---
+- name: Install monitoring tools
+  apt:
+    name:
+      - prometheus-node-exporter
+      - sysstat
+      - htop
+    state: present
+
+- name: Enable node exporter
+  systemd:
+    name: prometheus-node-exporter
+    state: started
+    enabled: yes
+
+- name: Create monitoring script
+  copy:
+    content: |
+      #!/bin/bash
+      echo "=== System Status ==="
+      echo "CPU Usage:"
+      top -bn1 | grep "Cpu(s)" | sed "s/.*, *\([0-9.]*\)%* id.*/\1/" | awk '{print 100 - $1"%"}'
+      echo "Memory Usage:"
+      free -m | awk 'NR==2{printf "%.2f%%\n", $3*100/$2 }'
+      echo "Disk Usage:"
+      df -h | awk '$NF=="/"{printf "%s\n", $5}'
+      echo "Docker Containers:"
+      docker ps --format "table {{.Names}}\t{{.Status}}"
+      echo "Application Health:"
+      curl -s http://localhost:8000/health || echo "Backend: DOWN"
+      curl -s http://localhost:3000 > /dev/null && echo "Frontend: UP" || echo "Frontend: DOWN"
+    dest: /usr/local/bin/system-status.sh
+    mode: '0755'
+
+- name: Create monitoring cron job
+  cron:
+    name: "System status check"
+    minute: "*/15"
+    job: "/usr/local/bin/system-status.sh >> /var/log/system-status.log 2>&1"
+    user: root

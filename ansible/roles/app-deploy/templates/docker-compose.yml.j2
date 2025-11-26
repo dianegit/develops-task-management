@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  database:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: {{ db_user }}
+      POSTGRES_PASSWORD: {{ db_password }}
+      POSTGRES_DB: {{ db_name }}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U {{ db_user }}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: {{ acr_login_server }}/taskmanager-backend:{{ image_tag }}
+    environment:
+      DATABASE_URL: postgresql://{{ db_user }}:{{ db_password }}@database:5432/{{ db_name }}
+      SECRET_KEY: {{ secret_key }}
+      CORS_ORIGINS: '["http://localhost:3000","http://{{ ansible_host }}"]'
+    ports:
+      - "8000:8000"
+    depends_on:
+      - database
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  frontend:
+    image: {{ acr_login_server }}/taskmanager-frontend:{{ image_tag }}
+    ports:
+      - "80:80"
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge

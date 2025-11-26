@@ -1,0 +1,6 @@
+"""Routes package initialization."""
+from routes.auth import router as auth_router
+from routes.tasks import router as tasks_router
+from routes.admin import router as admin_router
+
+__all__ = ["auth_router", "tasks_router", "admin_router"]

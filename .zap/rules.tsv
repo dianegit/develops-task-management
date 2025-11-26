@@ -1,0 +1,24 @@
+# ZAP Scanning Rule Configuration
+# Format: action	url_regex	parameter	attack_strength	threshold
+# Actions: IGNORE, INFO, WARN, FAIL
+
+# Ignore static assets
+IGNORE	(.*\.js|.*\.css|.*\.png|.*\.jpg|.*\.jpeg|.*\.gif|.*\.svg|.*\.woff|.*\.woff2)$
+
+# Information disclosure
+WARN	.*	X-Powered-By	MEDIUM	MEDIUM
+WARN	.*	Server	MEDIUM	MEDIUM
+
+# Authentication 
+FAIL	.*	Authorization	HIGH	LOW
+FAIL	.*login.*		HIGH	LOW
+FAIL	.*auth.*		HIGH	LOW
+
+# SQL Injection
+FAIL	.*	.*	HIGH	LOW
+
+# XSS
+FAIL	.*	.*	HIGH	MEDIUM
+
+# CSRF
+FAIL	.*	.*	MEDIUM	LOW
