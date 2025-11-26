@@ -80,11 +80,19 @@ jobs:
           format: 'sarif'
           output: 'trivy-frontend-results.sarif'
 
-      - name: Upload Trivy results
+      - name: Upload Trivy backend results
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: 'trivy-*-results.sarif'
+          sarif_file: 'trivy-backend-results.sarif'
+          category: 'trivy-backend'
+
+      - name: Upload Trivy frontend results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-frontend-results.sarif'
+          category: 'trivy-frontend'
 
   deploy:
     name: Deploy to Azure VM
