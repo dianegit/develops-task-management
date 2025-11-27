@@ -1,7 +1,7 @@
 variable "project_name" {
   description = "Project name used for resource naming"
   type        = string
-  default     = "devopspipeline"
+  default     = "taskapp"
 }
 
 variable "environment" {
@@ -11,9 +11,9 @@ variable "environment" {
 }
 
 variable "location" {
-  description = "Azure region for resources"
+  description = "Azure region"
   type        = string
-  default     = "East US"
+  default     = "spaincentral"
 }
 
 variable "vm_size" {
