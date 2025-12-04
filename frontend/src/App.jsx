@@ -7,7 +7,7 @@ import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { Landing } from './pages/Landing';
-import { About } from './pages/About';
+import About from './pages/About';
 import { Contact } from './pages/Contact';
 
 function App() {
