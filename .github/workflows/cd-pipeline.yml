@@ -5,209 +5,70 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  packages: write
-  security-events: write
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME_BACKEND: ${{ github.repository }}/backend
-  IMAGE_NAME_FRONTEND: ${{ github.repository }}/frontend
-
 jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata for Backend
-        id: meta-backend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}
-          tags: |
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push Backend image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile.backend
-          push: true
-          tags: ${{ steps.meta-backend.outputs.tags }}
-          labels: ${{ steps.meta-backend.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Extract metadata for Frontend
-        id: meta-frontend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}
-          tags: |
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push Frontend image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile.frontend
-          push: true
-          tags: ${{ steps.meta-frontend.outputs.tags }}
-          labels: ${{ steps.meta-frontend.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   deploy:
     runs-on: ubuntu-latest
-    needs: build-and-push
-    if: github.ref == 'refs/heads/main'
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Deploy to VM via SSH
+      - name: Deploy to VM
         uses: appleboy/ssh-action@v1.0.0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_ACTOR: ${{ github.actor }}
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_NAME: ${{ secrets.DB_NAME }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
           VM_IP: ${{ secrets.VM_PUBLIC_IP }}
-          REPO: ${{ github.repository }}
         with:
           host: ${{ secrets.VM_PUBLIC_IP }}
           username: azureuser
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           timeout: 30m
           command_timeout: 30m
-          envs: GITHUB_TOKEN,GITHUB_ACTOR,DB_USER,DB_PASSWORD,DB_NAME,SECRET_KEY,VM_IP,REPO
+          envs: DB_USER,DB_PASSWORD,DB_NAME,SECRET_KEY,VM_IP
           script: |
-            set -e  # Exit immediately if a command exits with a non-zero status
+            set -e
             
-            echo "Starting deployment..."
+            echo "📦 Starting deployment..."
             
-            # Install Docker if not present
-            if ! command -v docker &> /dev/null; then
-              echo "Installing Docker..."
-              sudo apt-get update
-              sudo apt-get install -y docker.io docker-compose
-              sudo systemctl enable docker
-              sudo systemctl start docker
-              sudo usermod -aG docker $USER
-            else
-              echo "Docker already installed."
-            fi
-
-            # Create app directory
-            mkdir -p ~/taskapp
-            cd ~/taskapp
-
-            # Login to GHCR (using sudo)
-            echo "Logging into GHCR..."
-            echo "$GITHUB_TOKEN" | sudo docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
-
-            # Create docker-compose.yml
-            echo "Creating docker-compose.yml..."
-            cat > docker-compose.yml << EOF
-            version: '3.8'
-
-            services:
-              postgres:
-                image: postgres:15-alpine
-                environment:
-                  - POSTGRES_USER=$DB_USER
-                  - POSTGRES_PASSWORD=$DB_PASSWORD
-                  - POSTGRES_DB=$DB_NAME
-                volumes:
-                  - postgres_data:/var/lib/postgresql/data
-                networks:
-                  - app-network
-                restart: unless-stopped
-
-              backend:
-                image: ghcr.io/$REPO/backend:latest
-                environment:
-                  - DATABASE_URL=postgresql://$DB_USER:$DB_PASSWORD@postgres:5432/$DB_NAME
-                  - SECRET_KEY=$SECRET_KEY
-                  - CORS_ORIGINS=http://$VM_IP:3000,http://$VM_IP
-                depends_on:
-                  - postgres
-                networks:
-                  - app-network
-                ports:
-                  - "8000:8000"
-                restart: unless-stopped
-
-              frontend:
-                image: ghcr.io/$REPO/frontend:latest
-                environment:
-                  - VITE_API_URL=http://$VM_IP:8000/api/v1
-                depends_on:
-                  - backend
-                networks:
-                  - app-network
-                ports:
-                  - "3000:80"
-                restart: unless-stopped
-
-            volumes:
-              postgres_data:
-
-            networks:
-              app-network:
-                driver: bridge
-            EOF
-
+            # Navigate to app directory
+            cd ~/develops-task-management
+            
+            # Pull latest code
+            echo "🔄 Pulling latest code from GitHub..."
+            git pull origin main
+            
+            # Update CORS_ORIGINS in docker-compose.yml
+            echo "⚙️  Updating configuration..."
+            sed -i "s|CORS_ORIGINS:.*|CORS_ORIGINS: '[\"http://$VM_IP:3000\",\"http://$VM_IP\"]'|g" docker-compose.yml
+            
+            # Update environment variables in docker-compose.yml
+            sed -i "s|POSTGRES_USER:.*|POSTGRES_USER: $DB_USER|g" docker-compose.yml
+            sed -i "s|POSTGRES_PASSWORD:.*|POSTGRES_PASSWORD: $DB_PASSWORD|g" docker-compose.yml
+            sed -i "s|POSTGRES_DB:.*|POSTGRES_DB: $DB_NAME|g" docker-compose.yml
+            sed -i "s|DATABASE_URL:.*|DATABASE_URL: postgresql://$DB_USER:$DB_PASSWORD@postgres:5432/$DB_NAME|g" docker-compose.yml
+            sed -i "s|SECRET_KEY:.*|SECRET_KEY: $SECRET_KEY|g" docker-compose.yml
+            
             # Stop existing containers
-            echo "Stopping existing containers..."
-            sudo docker-compose down || true
-
-            # Pull latest images
-            echo "Pulling latest images..."
-            sudo docker-compose pull --quiet
+            echo "🛑 Stopping existing containers..."
+            sudo docker-compose down
             
-            # Remove any existing containers to force fresh start
-            echo "Removing old containers..."
-            sudo docker-compose rm -f || true
-
-            # Start services with fresh pull
-            echo "Starting services..."
-            sudo docker-compose up -d --pull always
-
-            # Clean up old images
-            echo "Cleaning up..."
-            sudo docker image prune -af
+            # Build and start services
+            echo "🚀 Building and starting services..."
+            sudo docker-compose up -d --build
             
-            echo "Deployment script finished successfully."
+            # Wait for services to start
+            echo "⏳ Waiting for services to initialize..."
+            sleep 10
+            
+            # Check service status
+            echo "✅ Deployment complete!"
+            sudo docker-compose ps
+            
+            echo "🌐 Application accessible at: http://$VM_IP:3000"
 
       - name: Verify deployment
         run: |
-          echo "Waiting for services to start..."
-          sleep 60
-          echo "Checking Backend Health..."
-          curl -v -f http://${{ secrets.VM_PUBLIC_IP }}:8000/health || echo "Backend health check failed"
-          echo "Checking Frontend..."
-          curl -v -f http://${{ secrets.VM_PUBLIC_IP }}:3000 || echo "Frontend check failed"
-          echo "✅ Deployment complete! Access at http://${{ secrets.VM_PUBLIC_IP }}:3000"
+          echo "Waiting for services to fully start..."
+          sleep 30
+          echo "Checking application health..."
+          curl -f http://${{ secrets.VM_PUBLIC_IP }}:3000 || echo "⚠️ Frontend check failed"
+          echo "✅ Deployment verification complete!"
