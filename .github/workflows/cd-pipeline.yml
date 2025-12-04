@@ -100,25 +100,36 @@ jobs:
           host: ${{ secrets.VM_PUBLIC_IP }}
           username: azureuser
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: 30m
+          command_timeout: 30m
           envs: GITHUB_TOKEN,GITHUB_ACTOR,DB_USER,DB_PASSWORD,DB_NAME,SECRET_KEY,VM_IP,REPO
           script: |
+            set -e  # Exit immediately if a command exits with a non-zero status
+            
+            echo "Starting deployment..."
+            
             # Install Docker if not present
             if ! command -v docker &> /dev/null; then
+              echo "Installing Docker..."
               sudo apt-get update
               sudo apt-get install -y docker.io docker-compose
               sudo systemctl enable docker
               sudo systemctl start docker
               sudo usermod -aG docker $USER
+            else
+              echo "Docker already installed."
             fi
 
             # Create app directory
             mkdir -p ~/taskapp
             cd ~/taskapp
 
-            # Login to GHCR
-            echo "$GITHUB_TOKEN" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+            # Login to GHCR (using sudo)
+            echo "Logging into GHCR..."
+            echo "$GITHUB_TOKEN" | sudo docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
 
             # Create docker-compose.yml
+            echo "Creating docker-compose.yml..."
             cat > docker-compose.yml << EOF
             version: '3.8'
 
@@ -170,20 +181,33 @@ jobs:
             EOF
 
             # Stop existing containers
-            docker-compose down || true
+            echo "Stopping existing containers..."
+            sudo docker-compose down || true
 
             # Pull latest images
-            docker-compose pull
+            echo "Pulling latest images..."
+            sudo docker-compose pull --quiet
+            
+            # Remove any existing containers to force fresh start
+            echo "Removing old containers..."
+            sudo docker-compose rm -f || true
 
-            # Start services
-            docker-compose up -d
+            # Start services with fresh pull
+            echo "Starting services..."
+            sudo docker-compose up -d --pull always
 
             # Clean up old images
-            docker image prune -af
+            echo "Cleaning up..."
+            sudo docker image prune -af
+            
+            echo "Deployment script finished successfully."
 
       - name: Verify deployment
         run: |
-          sleep 30
-          curl -f http://${{ secrets.VM_PUBLIC_IP }}:8000/health || echo "Backend health check failed"
-          curl -f http://${{ secrets.VM_PUBLIC_IP }}:3000 || echo "Frontend check failed"
+          echo "Waiting for services to start..."
+          sleep 60
+          echo "Checking Backend Health..."
+          curl -v -f http://${{ secrets.VM_PUBLIC_IP }}:8000/health || echo "Backend health check failed"
+          echo "Checking Frontend..."
+          curl -v -f http://${{ secrets.VM_PUBLIC_IP }}:3000 || echo "Frontend check failed"
           echo "✅ Deployment complete! Access at http://${{ secrets.VM_PUBLIC_IP }}:3000"
