@@ -33,7 +33,7 @@ export const Landing = () => {
                     </p>
 
                     <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-                        <Link to="/register" className="btn-primary flex items-center group text-lg px-8 py-4">
+                        <Link to="/register" className="bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center group text-lg px-8 py-4">
                             Get Started Free
                             <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                         </Link>
