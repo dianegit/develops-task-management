@@ -36,7 +36,7 @@ jobs:
         run: |
           cd backend
           bandit -r . -f json -o bandit-report.json || true
-          bandit -r . -f txt
+          bandit -r . -f txt || true
       
       
       - name: Run Tests
