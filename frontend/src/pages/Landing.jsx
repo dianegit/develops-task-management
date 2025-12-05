@@ -37,7 +37,7 @@ export const Landing = () => {
                             Get Started Free
                             <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                         </Link>
-                        <Link to="/about" className="btn-secondary text-lg px-8 py-4">
+                        <Link to="/about" className="bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-lg px-8 py-4">
                             View Demo
                         </Link>
                     </div>
